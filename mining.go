@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2015 The btcsuite developers
+// Copyright (c) 2014-2016 The btcsuite developers
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
 
@@ -33,7 +33,8 @@ func (r FutureGenerateResult) Receive() ([]*wire.ShaHash, error) {
 		return nil, err
 	}
 
-	// Convert each block hash to a wire.ShaHash and store a pointer to each.
+	// Convert each block hash to a wire.ShaHash and store a pointer to
+	// each.
 	convertedResult := make([]*wire.ShaHash, len(result))
 	for i, hashString := range result {
 		convertedResult[i], err = wire.NewShaHashFromStr(hashString)
@@ -105,11 +106,7 @@ type FutureSetGenerateResult chan *response
 // any occurred when setting the server to generate coins (mine) or not.
 func (r FutureSetGenerateResult) Receive() error {
 	_, err := receiveFuture(r)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 // SetGenerateAsync returns an instance of a type that can be used to get the

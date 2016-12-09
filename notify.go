@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2015 The btcsuite developers
+// Copyright (c) 2014-2016 The btcsuite developers
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
 
@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/roasbeef/btcd/btcjson"
@@ -31,7 +30,6 @@ var (
 // registered notification so the state can be automatically re-established on
 // reconnect.
 type notificationState struct {
-	sync.Mutex
 	notifyBlocks       bool
 	notifyNewTx        bool
 	notifyNewTxVerbose bool
@@ -40,13 +38,11 @@ type notificationState struct {
 }
 
 // Copy returns a deep copy of the receiver.
-//
-// This function is safe for concurrent access.
 func (s *notificationState) Copy() *notificationState {
-	s.Lock()
-	defer s.Unlock()
-
-	stateCopy := *s
+	var stateCopy notificationState
+	stateCopy.notifyBlocks = s.notifyBlocks
+	stateCopy.notifyNewTx = s.notifyNewTx
+	stateCopy.notifyNewTxVerbose = s.notifyNewTxVerbose
 	stateCopy.notifyReceived = make(map[string]struct{})
 	for addr := range s.notifyReceived {
 		stateCopy.notifyReceived[addr] = struct{}{}
@@ -194,14 +190,14 @@ func (c *Client) handleNotification(ntfn *rawNotification) {
 			return
 		}
 
-		blockSha, blockHeight, blockTime, err := parseChainNtfnParams(ntfn.Params)
+		blockHash, blockHeight, blockTime, err := parseChainNtfnParams(ntfn.Params)
 		if err != nil {
 			log.Warnf("Received invalid block connected "+
 				"notification: %v", err)
 			return
 		}
 
-		c.ntfnHandlers.OnBlockConnected(blockSha, blockHeight, blockTime)
+		c.ntfnHandlers.OnBlockConnected(blockHash, blockHeight, blockTime)
 
 	// OnBlockDisconnected
 	case btcjson.BlockDisconnectedNtfnMethod:
@@ -211,14 +207,14 @@ func (c *Client) handleNotification(ntfn *rawNotification) {
 			return
 		}
 
-		blockSha, blockHeight, blockTime, err := parseChainNtfnParams(ntfn.Params)
+		blockHash, blockHeight, blockTime, err := parseChainNtfnParams(ntfn.Params)
 		if err != nil {
 			log.Warnf("Received invalid block connected "+
 				"notification: %v", err)
 			return
 		}
 
-		c.ntfnHandlers.OnBlockDisconnected(blockSha, blockHeight, blockTime)
+		c.ntfnHandlers.OnBlockDisconnected(blockHash, blockHeight, blockTime)
 
 	// OnRecvTx
 	case btcjson.RecvTxNtfnMethod:
@@ -406,8 +402,8 @@ func parseChainNtfnParams(params []json.RawMessage) (*wire.ShaHash,
 	}
 
 	// Unmarshal first parameter as a string.
-	var blockShaStr string
-	err := json.Unmarshal(params[0], &blockShaStr)
+	var blockHashStr string
+	err := json.Unmarshal(params[0], &blockHashStr)
 	if err != nil {
 		return nil, 0, time.Time{}, err
 	}
@@ -426,8 +422,8 @@ func parseChainNtfnParams(params []json.RawMessage) (*wire.ShaHash,
 		return nil, 0, time.Time{}, err
 	}
 
-	// Create ShaHash from block sha string.
-	blockSha, err := wire.NewShaHashFromStr(blockShaStr)
+	// Create hash from block hash string.
+	blockHash, err := wire.NewShaHashFromStr(blockHashStr)
 	if err != nil {
 		return nil, 0, time.Time{}, err
 	}
@@ -435,7 +431,7 @@ func parseChainNtfnParams(params []json.RawMessage) (*wire.ShaHash,
 	// Create time.Time from unix time.
 	blockTime := time.Unix(blockTimeUnix, 0)
 
-	return blockSha, blockHeight, blockTime, nil
+	return blockHash, blockHeight, blockTime, nil
 }
 
 // parseChainTxNtfnParams parses out the transaction and optional details about
@@ -477,7 +473,7 @@ func parseChainTxNtfnParams(params []json.RawMessage) (*btcutil.Tx,
 	}
 
 	// TODO: Change recvtx and redeemingtx callback signatures to use
-	// nicer types for details about the block (block sha as a
+	// nicer types for details about the block (block hash as a
 	// wire.ShaHash, block time as a time.Time, etc.).
 	return btcutil.NewTx(&msgTx), block, nil
 }
@@ -529,8 +525,8 @@ func parseTxAcceptedNtfnParams(params []json.RawMessage) (*wire.ShaHash,
 	}
 
 	// Unmarshal first parameter as a string.
-	var txShaStr string
-	err := json.Unmarshal(params[0], &txShaStr)
+	var txHashStr string
+	err := json.Unmarshal(params[0], &txHashStr)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -549,12 +545,12 @@ func parseTxAcceptedNtfnParams(params []json.RawMessage) (*wire.ShaHash,
 	}
 
 	// Decode string encoding of transaction sha.
-	txSha, err := wire.NewShaHashFromStr(txShaStr)
+	txHash, err := wire.NewShaHashFromStr(txHashStr)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	return txSha, btcutil.Amount(amt), nil
+	return txHash, amt, nil
 }
 
 // parseTxAcceptedVerboseNtfnParams parses out details about a raw transaction
@@ -631,7 +627,7 @@ func parseAccountBalanceNtfnParams(params []json.RawMessage) (account string,
 		return "", 0, false, err
 	}
 
-	return account, btcutil.Amount(bal), confirmed, nil
+	return account, bal, confirmed, nil
 }
 
 // parseWalletLockStateNtfnParams parses out the account name and locked
@@ -666,11 +662,7 @@ type FutureNotifyBlocksResult chan *response
 // if the registration was not successful.
 func (r FutureNotifyBlocksResult) Receive() error {
 	_, err := receiveFuture(r)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 // NotifyBlocksAsync returns an instance of a type that can be used to get the
@@ -718,11 +710,7 @@ type FutureNotifySpentResult chan *response
 // if the registration was not successful.
 func (r FutureNotifySpentResult) Receive() error {
 	_, err := receiveFuture(r)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 // notifySpentInternal is the same as notifySpentAsync except it accepts
@@ -802,11 +790,7 @@ type FutureNotifyNewTransactionsResult chan *response
 // if the registration was not successful.
 func (r FutureNotifyNewTransactionsResult) Receive() error {
 	_, err := receiveFuture(r)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 // NotifyNewTransactionsAsync returns an instance of a type that can be used to
@@ -855,11 +839,7 @@ type FutureNotifyReceivedResult chan *response
 // if the registration was not successful.
 func (r FutureNotifyReceivedResult) Receive() error {
 	_, err := receiveFuture(r)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 // notifyReceivedInternal is the same as notifyReceivedAsync except it accepts
@@ -939,11 +919,7 @@ type FutureRescanResult chan *response
 // if the rescan was not successful.
 func (r FutureRescanResult) Receive() error {
 	_, err := receiveFuture(r)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 // RescanAsync returns an instance of a type that can be used to get the result
@@ -975,9 +951,9 @@ func (c *Client) RescanAsync(startBlock *wire.ShaHash,
 	}
 
 	// Convert block hashes to strings.
-	var startBlockShaStr string
+	var startBlockHashStr string
 	if startBlock != nil {
-		startBlockShaStr = startBlock.String()
+		startBlockHashStr = startBlock.String()
 	}
 
 	// Convert addresses to strings.
@@ -992,7 +968,7 @@ func (c *Client) RescanAsync(startBlock *wire.ShaHash,
 		ops = append(ops, newOutPointFromWire(op))
 	}
 
-	cmd := btcjson.NewRescanCmd(startBlockShaStr, addrs, ops, nil)
+	cmd := btcjson.NewRescanCmd(startBlockHashStr, addrs, ops, nil)
 	return c.sendCmd(cmd)
 }
 
@@ -1052,12 +1028,12 @@ func (c *Client) RescanEndBlockAsync(startBlock *wire.ShaHash,
 	}
 
 	// Convert block hashes to strings.
-	var startBlockShaStr, endBlockShaStr string
+	var startBlockHashStr, endBlockHashStr string
 	if startBlock != nil {
-		startBlockShaStr = startBlock.String()
+		startBlockHashStr = startBlock.String()
 	}
 	if endBlock != nil {
-		endBlockShaStr = endBlock.String()
+		endBlockHashStr = endBlock.String()
 	}
 
 	// Convert addresses to strings.
@@ -1072,8 +1048,8 @@ func (c *Client) RescanEndBlockAsync(startBlock *wire.ShaHash,
 		ops = append(ops, newOutPointFromWire(op))
 	}
 
-	cmd := btcjson.NewRescanCmd(startBlockShaStr, addrs, ops,
-		&endBlockShaStr)
+	cmd := btcjson.NewRescanCmd(startBlockHashStr, addrs, ops,
+		&endBlockHashStr)
 	return c.sendCmd(cmd)
 }
 

@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2015 The btcsuite developers
+// Copyright (c) 2014-2016 The btcsuite developers
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
 
@@ -422,11 +422,7 @@ type FutureSetTxFeeResult chan *response
 // are processed quickly.  Most transaction are 1KB.
 func (r FutureSetTxFeeResult) Receive() error {
 	_, err := receiveFuture(r)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 // SetTxFeeAsync returns an instance of a type that can be used to get the
@@ -851,11 +847,7 @@ type FutureCreateNewAccountResult chan *response
 // result of creating new account.
 func (r FutureCreateNewAccountResult) Receive() error {
 	_, err := receiveFuture(r)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 // CreateNewAccountAsync returns an instance of a type that can be used to get the
@@ -1034,11 +1026,7 @@ type FutureSetAccountResult chan *response
 // of setting the account to be associated with the passed address.
 func (r FutureSetAccountResult) Receive() error {
 	_, err := receiveFuture(r)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 // SetAccountAsync returns an instance of a type that can be used to get the
@@ -1204,11 +1192,7 @@ type FutureRenameAccountResult chan *response
 // result of creating new account.
 func (r FutureRenameAccountResult) Receive() error {
 	_, err := receiveFuture(r)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 // RenameAccountAsync returns an instance of a type that can be used to get the
@@ -1272,11 +1256,7 @@ type FutureKeyPoolRefillResult chan *response
 // of refilling the key pool.
 func (r FutureKeyPoolRefillResult) Receive() error {
 	_, err := receiveFuture(r)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 // KeyPoolRefillAsync returns an instance of a type that can be used to get the
@@ -1851,11 +1831,7 @@ type FutureWalletLockResult chan *response
 // of locking the wallet.
 func (r FutureWalletLockResult) Receive() error {
 	_, err := receiveFuture(r)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 // WalletLockAsync returns an instance of a type that can be used to get the
@@ -1883,11 +1859,7 @@ func (c *Client) WalletLock() error {
 func (c *Client) WalletPassphrase(passphrase string, timeoutSecs int64) error {
 	cmd := btcjson.NewWalletPassphraseCmd(passphrase, timeoutSecs)
 	_, err := c.sendCmdAndWait(cmd)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 // FutureWalletPassphraseChangeResult is a future promise to deliver the result
@@ -1898,11 +1870,7 @@ type FutureWalletPassphraseChangeResult chan *response
 // of changing the wallet passphrase.
 func (r FutureWalletPassphraseChangeResult) Receive() error {
 	_, err := receiveFuture(r)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 // WalletPassphraseChangeAsync returns an instance of a type that can be used to
@@ -2062,11 +2030,7 @@ type FutureImportAddressResult chan *response
 // of importing the passed public address.
 func (r FutureImportAddressResult) Receive() error {
 	_, err := receiveFuture(r)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 // ImportAddressAsync returns an instance of a type that can be used to get the
@@ -2109,11 +2073,7 @@ type FutureImportPrivKeyResult chan *response
 // (WIF).
 func (r FutureImportPrivKeyResult) Receive() error {
 	_, err := receiveFuture(r)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 // ImportPrivKeyAsync returns an instance of a type that can be used to get the
@@ -2188,11 +2148,7 @@ type FutureImportPubKeyResult chan *response
 // of importing the passed public key.
 func (r FutureImportPubKeyResult) Receive() error {
 	_, err := receiveFuture(r)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 // ImportPubKeyAsync returns an instance of a type that can be used to get the

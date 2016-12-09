@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math"
 	"net"
 	"net/http"
 	"net/url"
@@ -144,8 +145,9 @@ type Client struct {
 	requestList *list.List
 
 	// Notifications.
-	ntfnHandlers *NotificationHandlers
-	ntfnState    *notificationState
+	ntfnHandlers  *NotificationHandlers
+	ntfnStateLock sync.Mutex
+	ntfnState     *notificationState
 
 	// Networking infrastructure.
 	sendChan        chan []byte
@@ -232,8 +234,8 @@ func (c *Client) trackRegisteredNtfns(cmd interface{}) {
 		return
 	}
 
-	c.ntfnState.Lock()
-	defer c.ntfnState.Unlock()
+	c.ntfnStateLock.Lock()
+	defer c.ntfnStateLock.Unlock()
 
 	switch bcmd := cmd.(type) {
 	case *btcjson.NotifyBlocksCmd:
@@ -266,7 +268,7 @@ type (
 	// the embedded ID (from the response) is nil.  Otherwise, it is a
 	// response.
 	inMessage struct {
-		ID *uint64 `json:"id"`
+		ID *float64 `json:"id"`
 		*rawNotification
 		*rawResponse
 	}
@@ -337,12 +339,18 @@ func (c *Client) handleMessage(msg []byte) {
 		return
 	}
 
+	// ensure that in.ID can be converted to an integer without loss of precision
+	if *in.ID < 0 || *in.ID != math.Trunc(*in.ID) {
+		log.Warn("Malformed response: invalid identifier")
+		return
+	}
+
 	if in.rawResponse == nil {
 		log.Warn("Malformed response: missing result and error")
 		return
 	}
 
-	id := *in.ID
+	id := uint64(*in.ID)
 	log.Tracef("Received response for id %d (result %s)", id, in.Result)
 	request := c.removeRequest(id)
 
@@ -491,7 +499,9 @@ func (c *Client) reregisterNtfns() error {
 	// the notification state (while not under the lock of course) which
 	// also register it with the remote RPC server, so this prevents double
 	// registrations.
+	c.ntfnStateLock.Lock()
 	stateCopy := c.ntfnState.Copy()
+	c.ntfnStateLock.Unlock()
 
 	// Reregister notifyblocks if needed.
 	if stateCopy.notifyBlocks {
@@ -545,7 +555,7 @@ func (c *Client) reregisterNtfns() error {
 // ignoreResends is a set of all methods for requests that are "long running"
 // are not be reissued by the client on reconnect.
 var ignoreResends = map[string]struct{}{
-	"rescan": struct{}{},
+	"rescan": {},
 }
 
 // resendRequests resends any requests that had not completed when the client
@@ -695,15 +705,15 @@ func (c *Client) handleSendPostMessage(details *sendPostDetails) {
 		return
 	}
 
-	// Handle unsuccessful HTTP responses
-	if httpResponse.StatusCode < 200 || httpResponse.StatusCode >= 300 {
-		jReq.responseChan <- &response{err: errors.New(string(respBytes))}
-		return
-	}
-
+	// Try to unmarshal the response as a regular JSON-RPC response.
 	var resp rawResponse
 	err = json.Unmarshal(respBytes, &resp)
 	if err != nil {
+		// When the response itself isn't a valid JSON-RPC response
+		// return an error which includes the HTTP status code and raw
+		// response bytes.
+		err = fmt.Errorf("status code: %d, response: %q",
+			httpResponse.StatusCode, string(respBytes))
 		jReq.responseChan <- &response{err: err}
 		return
 	}
