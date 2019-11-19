@@ -42,7 +42,7 @@ func (r FutureGetBestBlockHashResult) Receive() (*chainhash.Hash, error) {
 //
 // See GetBestBlockHash for the blocking version and more details.
 func (c *Client) GetBestBlockHashAsync() FutureGetBestBlockHashResult {
-	cmd := dogejson.NewGetBestBlockHashCmd()
+	cmd := btcjson.NewGetBestBlockHashCmd()
 	return c.sendCmd(cmd)
 }
 
@@ -205,7 +205,7 @@ func (r FutureGetBlockCountResult) Receive() (int64, error) {
 //
 // See GetBlockCount for the blocking version and more details.
 func (c *Client) GetBlockCountAsync() FutureGetBlockCountResult {
-	cmd := dogejson.NewGetBlockCountCmd()
+	cmd := btcjson.NewGetBlockCountCmd()
 	return c.sendCmd(cmd)
 }
 
@@ -241,7 +241,7 @@ func (r FutureGetDifficultyResult) Receive() (float64, error) {
 //
 // See GetDifficulty for the blocking version and more details.
 func (c *Client) GetDifficultyAsync() FutureGetDifficultyResult {
-	cmd := dogejson.NewGetDifficultyCmd()
+	cmd := btcjson.NewGetDifficultyCmd()
 	return c.sendCmd(cmd)
 }
 
@@ -328,7 +328,7 @@ func (r FutureGetBlockChainInfoResult) Receive() (*btcjson.GetBlockChainInfoResu
 //
 // See GetBlockChainInfo for the blocking version and more details.
 func (c *Client) GetBlockChainInfoAsync() FutureGetBlockChainInfoResult {
-	cmd := dogejson.NewGetBlockChainInfoCmd()
+	cmd := btcjson.NewGetBlockChainInfoCmd()
 	return FutureGetBlockChainInfoResult{
 		client:   c,
 		Response: c.sendCmd(cmd),
@@ -369,7 +369,7 @@ func (r FutureGetBlockHashResult) Receive() (*chainhash.Hash, error) {
 //
 // See GetBlockHash for the blocking version and more details.
 func (c *Client) GetBlockHashAsync(blockHeight int64) FutureGetBlockHashResult {
-	cmd := dogejson.NewGetBlockHashCmd(blockHeight)
+	cmd := btcjson.NewGetBlockHashCmd(blockHeight)
 	return c.sendCmd(cmd)
 }
 
@@ -424,7 +424,7 @@ func (c *Client) GetBlockHeaderAsync(blockHash *chainhash.Hash) FutureGetBlockHe
 		hash = blockHash.String()
 	}
 
-	cmd := dogejson.NewGetBlockHeaderCmd(hash, btcjson.Bool(false))
+	cmd := btcjson.NewGetBlockHeaderCmd(hash, btcjson.Bool(false))
 	return c.sendCmd(cmd)
 }
 
@@ -469,7 +469,7 @@ func (c *Client) GetBlockHeaderVerboseAsync(blockHash *chainhash.Hash) FutureGet
 		hash = blockHash.String()
 	}
 
-	cmd := dogejson.NewGetBlockHeaderCmd(hash, btcjson.Bool(true))
+	cmd := btcjson.NewGetBlockHeaderCmd(hash, btcjson.Bool(true))
 	return c.sendCmd(cmd)
 }
 
@@ -510,7 +510,7 @@ func (r FutureGetMempoolEntryResult) Receive() (*btcjson.GetMempoolEntryResult, 
 //
 // See GetMempoolEntry for the blocking version and more details.
 func (c *Client) GetMempoolEntryAsync(txHash string) FutureGetMempoolEntryResult {
-	cmd := dogejson.NewGetMempoolEntryCmd(txHash)
+	cmd := btcjson.NewGetMempoolEntryCmd(txHash)
 	return c.sendCmd(cmd)
 }
 
@@ -558,7 +558,7 @@ func (r FutureGetRawMempoolResult) Receive() ([]*chainhash.Hash, error) {
 //
 // See GetRawMempool for the blocking version and more details.
 func (c *Client) GetRawMempoolAsync() FutureGetRawMempoolResult {
-	cmd := dogejson.NewGetRawMempoolCmd(btcjson.Bool(false))
+	cmd := btcjson.NewGetRawMempoolCmd(btcjson.Bool(false))
 	return c.sendCmd(cmd)
 }
 
@@ -599,7 +599,7 @@ func (r FutureGetRawMempoolVerboseResult) Receive() (map[string]btcjson.GetRawMe
 //
 // See GetRawMempoolVerbose for the blocking version and more details.
 func (c *Client) GetRawMempoolVerboseAsync() FutureGetRawMempoolVerboseResult {
-	cmd := dogejson.NewGetRawMempoolCmd(btcjson.Bool(true))
+	cmd := btcjson.NewGetRawMempoolCmd(btcjson.Bool(true))
 	return c.sendCmd(cmd)
 }
 
@@ -678,7 +678,7 @@ func (r FutureVerifyChainResult) Receive() (bool, error) {
 //
 // See VerifyChain for the blocking version and more details.
 func (c *Client) VerifyChainAsync() FutureVerifyChainResult {
-	cmd := dogejson.NewVerifyChainCmd(nil, nil)
+	cmd := btcjson.NewVerifyChainCmd(nil, nil)
 	return c.sendCmd(cmd)
 }
 
@@ -696,7 +696,7 @@ func (c *Client) VerifyChain() (bool, error) {
 //
 // See VerifyChainLevel for the blocking version and more details.
 func (c *Client) VerifyChainLevelAsync(checkLevel int32) FutureVerifyChainResult {
-	cmd := dogejson.NewVerifyChainCmd(&checkLevel, nil)
+	cmd := btcjson.NewVerifyChainCmd(&checkLevel, nil)
 	return c.sendCmd(cmd)
 }
 
@@ -719,7 +719,7 @@ func (c *Client) VerifyChainLevel(checkLevel int32) (bool, error) {
 //
 // See VerifyChainBlocks for the blocking version and more details.
 func (c *Client) VerifyChainBlocksAsync(checkLevel, numBlocks int32) FutureVerifyChainResult {
-	cmd := dogejson.NewVerifyChainCmd(&checkLevel, &numBlocks)
+	cmd := btcjson.NewVerifyChainCmd(&checkLevel, &numBlocks)
 	return c.sendCmd(cmd)
 }
 
@@ -777,7 +777,7 @@ func (c *Client) GetTxOutAsync(txHash *chainhash.Hash, index uint32, mempool boo
 		hash = txHash.String()
 	}
 
-	cmd := dogejson.NewGetTxOutCmd(hash, index, &mempool)
+	cmd := btcjson.NewGetTxOutCmd(hash, index, &mempool)
 	return c.sendCmd(cmd)
 }
 
@@ -865,7 +865,7 @@ func (c *Client) InvalidateBlockAsync(blockHash *chainhash.Hash) FutureInvalidat
 		hash = blockHash.String()
 	}
 
-	cmd := dogejson.NewInvalidateBlockCmd(hash)
+	cmd := btcjson.NewInvalidateBlockCmd(hash)
 	return c.sendCmd(cmd)
 }
 
@@ -919,7 +919,7 @@ func (c *Client) GetCFilterAsync(blockHash *chainhash.Hash,
 		hash = blockHash.String()
 	}
 
-	cmd := dogejson.NewGetCFilterCmd(hash, filterType)
+	cmd := btcjson.NewGetCFilterCmd(hash, filterType)
 	return c.sendCmd(cmd)
 }
 
@@ -972,7 +972,7 @@ func (c *Client) GetCFilterHeaderAsync(blockHash *chainhash.Hash,
 		hash = blockHash.String()
 	}
 
-	cmd := dogejson.NewGetCFilterHeaderCmd(hash, filterType)
+	cmd := btcjson.NewGetCFilterHeaderCmd(hash, filterType)
 	return c.sendCmd(cmd)
 }
 

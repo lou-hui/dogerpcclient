@@ -13,7 +13,6 @@ import (
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcutil"
-	"github.com/lou-hui/dogerpcclient/dogejson"
 )
 
 const (
@@ -109,7 +108,7 @@ func (c *Client) GetRawTransactionAsync(txHash *chainhash.Hash) FutureGetRawTran
 		hash = txHash.String()
 	}
 
-	cmd := dogejson.NewGetRawTransactionCmd(hash, btcjson.Int(0))
+	cmd := btcjson.NewGetRawTransactionCmd(hash, btcjson.Int(0))
 	return c.sendCmd(cmd)
 }
 
@@ -155,7 +154,7 @@ func (c *Client) GetRawTransactionVerboseAsync(txHash *chainhash.Hash) FutureGet
 		hash = txHash.String()
 	}
 
-	cmd := dogejson.NewGetRawTransactionCmd(hash, btcjson.Int(1))
+	cmd := btcjson.NewGetRawTransactionCmd(hash, btcjson.Int(1))
 	return c.sendCmd(cmd)
 }
 
@@ -196,7 +195,7 @@ func (r FutureDecodeRawTransactionResult) Receive() (*btcjson.TxRawResult, error
 // See DecodeRawTransaction for the blocking version and more details.
 func (c *Client) DecodeRawTransactionAsync(serializedTx []byte) FutureDecodeRawTransactionResult {
 	txHex := hex.EncodeToString(serializedTx)
-	cmd := dogejson.NewDecodeRawTransactionCmd(txHex)
+	cmd := btcjson.NewDecodeRawTransactionCmd(txHex)
 	return c.sendCmd(cmd)
 }
 
@@ -245,20 +244,20 @@ func (r FutureCreateRawTransactionResult) Receive() (*wire.MsgTx, error) {
 // function on the returned instance.
 //
 // See CreateRawTransaction for the blocking version and more details.
-func (c *Client) CreateRawTransactionAsync(inputs []dogejson.TransactionInput,
+func (c *Client) CreateRawTransactionAsync(inputs []btcjson.TransactionInput,
 	amounts map[btcutil.Address]btcutil.Amount, lockTime *int64) FutureCreateRawTransactionResult {
 
 	convertedAmts := make(map[string]float64, len(amounts))
 	for addr, amount := range amounts {
 		convertedAmts[addr.String()] = amount.ToBTC()
 	}
-	cmd := dogejson.NewCreateRawTransactionCmd(inputs, convertedAmts, lockTime)
+	cmd := btcjson.NewCreateRawTransactionCmd(inputs, convertedAmts, lockTime)
 	return c.sendCmd(cmd)
 }
 
 // CreateRawTransaction returns a new transaction spending the provided inputs
 // and sending to the provided addresses.
-func (c *Client) CreateRawTransaction(inputs []dogejson.TransactionInput,
+func (c *Client) CreateRawTransaction(inputs []btcjson.TransactionInput,
 	amounts map[btcutil.Address]btcutil.Amount, lockTime *int64) (*wire.MsgTx, error) {
 
 	return c.CreateRawTransactionAsync(inputs, amounts, lockTime).Receive()
@@ -311,7 +310,7 @@ func (c *Client) SendRawTransactionAsync(tx *wire.MsgTx, allowHighFees bool) Fut
 		return newFutureError(err)
 	}
 
-	var cmd *dogejson.SendRawTransactionCmd
+	var cmd *btcjson.SendRawTransactionCmd
 	switch version {
 	// Starting from bitcoind v0.19.0, the MaxFeeRate field should be used.
 	case BitcoindPost19:
@@ -321,11 +320,11 @@ func (c *Client) SendRawTransactionAsync(tx *wire.MsgTx, allowHighFees bool) Fut
 		if !allowHighFees {
 			maxFeeRate = defaultMaxFeeRate
 		}
-		cmd = dogejson.NewBitcoindSendRawTransactionCmd(txHex, maxFeeRate)
+		cmd = btcjson.NewBitcoindSendRawTransactionCmd(txHex, maxFeeRate)
 
 	// Otherwise, use the AllowHighFees field.
 	default:
-		cmd = dogejson.NewSendRawTransactionCmd(txHex, &allowHighFees)
+		cmd = btcjson.NewSendRawTransactionCmd(txHex, &allowHighFees)
 	}
 
 	return c.sendCmd(cmd)
@@ -685,7 +684,7 @@ func (r FutureDecodeScriptResult) Receive() (*btcjson.DecodeScriptResult, error)
 // See DecodeScript for the blocking version and more details.
 func (c *Client) DecodeScriptAsync(serializedScript []byte) FutureDecodeScriptResult {
 	scriptHex := hex.EncodeToString(serializedScript)
-	cmd := dogejson.NewDecodeScriptCmd(scriptHex)
+	cmd := btcjson.NewDecodeScriptCmd(scriptHex)
 	return c.sendCmd(cmd)
 }
 
