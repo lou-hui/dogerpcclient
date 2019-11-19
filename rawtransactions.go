@@ -1,18 +1,25 @@
-// Copyright (c) 2014-2016 The btcsuite developers
+// Copyright (c) 2014-2017 The btcsuite developers
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
 
-package btcrpcclient
+package rpcclient
 
 import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
 
-	"github.com/roasbeef/btcd/btcjson"
-	"github.com/roasbeef/btcd/chaincfg/chainhash"
-	"github.com/roasbeef/btcd/wire"
-	"github.com/roasbeef/btcutil"
+	"github.com/btcsuite/btcd/btcjson"
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
+	"github.com/btcsuite/btcd/wire"
+	"github.com/btcsuite/btcutil"
+	"github.com/lou-hui/dogerpcclient/dogejson"
+)
+
+const (
+	// defaultMaxFeeRate is the default maximum fee rate in sat/KB enforced
+	// by bitcoind v0.19.0 or after for transaction broadcast.
+	defaultMaxFeeRate = btcutil.SatoshiPerBitcoin / 10
 )
 
 // SigHashType enumerates the available signature hashing types that the
@@ -102,7 +109,7 @@ func (c *Client) GetRawTransactionAsync(txHash *chainhash.Hash) FutureGetRawTran
 		hash = txHash.String()
 	}
 
-	cmd := btcjson.NewGetRawTransactionCmd(hash, btcjson.Int(0))
+	cmd := dogejson.NewGetRawTransactionCmd(hash, btcjson.Int(0))
 	return c.sendCmd(cmd)
 }
 
@@ -148,7 +155,7 @@ func (c *Client) GetRawTransactionVerboseAsync(txHash *chainhash.Hash) FutureGet
 		hash = txHash.String()
 	}
 
-	cmd := btcjson.NewGetRawTransactionCmd(hash, btcjson.Int(1))
+	cmd := dogejson.NewGetRawTransactionCmd(hash, btcjson.Int(1))
 	return c.sendCmd(cmd)
 }
 
@@ -189,7 +196,7 @@ func (r FutureDecodeRawTransactionResult) Receive() (*btcjson.TxRawResult, error
 // See DecodeRawTransaction for the blocking version and more details.
 func (c *Client) DecodeRawTransactionAsync(serializedTx []byte) FutureDecodeRawTransactionResult {
 	txHex := hex.EncodeToString(serializedTx)
-	cmd := btcjson.NewDecodeRawTransactionCmd(txHex)
+	cmd := dogejson.NewDecodeRawTransactionCmd(txHex)
 	return c.sendCmd(cmd)
 }
 
@@ -238,20 +245,20 @@ func (r FutureCreateRawTransactionResult) Receive() (*wire.MsgTx, error) {
 // function on the returned instance.
 //
 // See CreateRawTransaction for the blocking version and more details.
-func (c *Client) CreateRawTransactionAsync(inputs []btcjson.TransactionInput,
+func (c *Client) CreateRawTransactionAsync(inputs []dogejson.TransactionInput,
 	amounts map[btcutil.Address]btcutil.Amount, lockTime *int64) FutureCreateRawTransactionResult {
 
 	convertedAmts := make(map[string]float64, len(amounts))
 	for addr, amount := range amounts {
 		convertedAmts[addr.String()] = amount.ToBTC()
 	}
-	cmd := btcjson.NewCreateRawTransactionCmd(inputs, convertedAmts, lockTime)
+	cmd := dogejson.NewCreateRawTransactionCmd(inputs, convertedAmts, lockTime)
 	return c.sendCmd(cmd)
 }
 
 // CreateRawTransaction returns a new transaction spending the provided inputs
 // and sending to the provided addresses.
-func (c *Client) CreateRawTransaction(inputs []btcjson.TransactionInput,
+func (c *Client) CreateRawTransaction(inputs []dogejson.TransactionInput,
 	amounts map[btcutil.Address]btcutil.Amount, lockTime *int64) (*wire.MsgTx, error) {
 
 	return c.CreateRawTransactionAsync(inputs, amounts, lockTime).Receive()
@@ -296,7 +303,31 @@ func (c *Client) SendRawTransactionAsync(tx *wire.MsgTx, allowHighFees bool) Fut
 		txHex = hex.EncodeToString(buf.Bytes())
 	}
 
-	cmd := btcjson.NewSendRawTransactionCmd(txHex, &allowHighFees)
+	// Due to differences in the sendrawtransaction API for different
+	// backends, we'll need to inspect our version and construct the
+	// appropriate request.
+	version, err := c.BackendVersion()
+	if err != nil {
+		return newFutureError(err)
+	}
+
+	var cmd *dogejson.SendRawTransactionCmd
+	switch version {
+	// Starting from bitcoind v0.19.0, the MaxFeeRate field should be used.
+	case BitcoindPost19:
+		// Using a 0 MaxFeeRate is interpreted as a maximum fee rate not
+		// being enforced by bitcoind.
+		var maxFeeRate int32
+		if !allowHighFees {
+			maxFeeRate = defaultMaxFeeRate
+		}
+		cmd = dogejson.NewBitcoindSendRawTransactionCmd(txHex, maxFeeRate)
+
+	// Otherwise, use the AllowHighFees field.
+	default:
+		cmd = dogejson.NewSendRawTransactionCmd(txHex, &allowHighFees)
+	}
+
 	return c.sendCmd(cmd)
 }
 
@@ -623,4 +654,42 @@ func (c *Client) SearchRawTransactionsVerbose(address btcutil.Address, skip,
 
 	return c.SearchRawTransactionsVerboseAsync(address, skip, count,
 		includePrevOut, reverse, &filterAddrs).Receive()
+}
+
+// FutureDecodeScriptResult is a future promise to deliver the result
+// of a DecodeScriptAsync RPC invocation (or an applicable error).
+type FutureDecodeScriptResult chan *response
+
+// Receive waits for the response promised by the future and returns information
+// about a script given its serialized bytes.
+func (r FutureDecodeScriptResult) Receive() (*btcjson.DecodeScriptResult, error) {
+	res, err := receiveFuture(r)
+	if err != nil {
+		return nil, err
+	}
+
+	// Unmarshal result as a decodescript result object.
+	var decodeScriptResult btcjson.DecodeScriptResult
+	err = json.Unmarshal(res, &decodeScriptResult)
+	if err != nil {
+		return nil, err
+	}
+
+	return &decodeScriptResult, nil
+}
+
+// DecodeScriptAsync returns an instance of a type that can be used to
+// get the result of the RPC at some future time by invoking the Receive
+// function on the returned instance.
+//
+// See DecodeScript for the blocking version and more details.
+func (c *Client) DecodeScriptAsync(serializedScript []byte) FutureDecodeScriptResult {
+	scriptHex := hex.EncodeToString(serializedScript)
+	cmd := dogejson.NewDecodeScriptCmd(scriptHex)
+	return c.sendCmd(cmd)
+}
+
+// DecodeScript returns information about a script given its serialized bytes.
+func (c *Client) DecodeScript(serializedScript []byte) (*btcjson.DecodeScriptResult, error) {
+	return c.DecodeScriptAsync(serializedScript).Receive()
 }

@@ -1,13 +1,13 @@
-// Copyright (c) 2014-2015 The btcsuite developers
+// Copyright (c) 2014-2017 The btcsuite developers
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
 
-package btcrpcclient
+package rpcclient
 
 import (
 	"encoding/json"
 
-	"github.com/roasbeef/btcd/btcjson"
+	"github.com/btcsuite/btcd/btcjson"
 )
 
 // AddNodeCommand enumerates the available commands that the AddNode function
@@ -61,6 +61,40 @@ func (c *Client) AddNodeAsync(host string, command AddNodeCommand) FutureAddNode
 // It may not be used to remove non-persistent peers.
 func (c *Client) AddNode(host string, command AddNodeCommand) error {
 	return c.AddNodeAsync(host, command).Receive()
+}
+
+// FutureNodeResult is a future promise to deliver the result of a NodeAsync
+// RPC invocation (or an applicable error).
+type FutureNodeResult chan *response
+
+// Receive waits for the response promised by the future and returns an error if
+// any occurred when performing the specified command.
+func (r FutureNodeResult) Receive() error {
+	_, err := receiveFuture(r)
+	return err
+}
+
+// NodeAsync returns an instance of a type that can be used to get the result
+// of the RPC at some future time by invoking the Receive function on the
+// returned instance.
+//
+// See Node for the blocking version and more details.
+func (c *Client) NodeAsync(command btcjson.NodeSubCmd, host string,
+	connectSubCmd *string) FutureNodeResult {
+	cmd := btcjson.NewNodeCmd(command, host, connectSubCmd)
+	return c.sendCmd(cmd)
+}
+
+// Node attempts to perform the passed node command on the host.
+// For example, it can be used to add or a remove a persistent peer, or to do
+// connect or diconnect a non-persistent one.
+//
+// The connectSubCmd should be set either "perm" or "temp", depending on
+// whether we are targetting a persistent or non-persistent peer. Passing nil
+// will cause the default value to be used, which currently is "temp".
+func (c *Client) Node(command btcjson.NodeSubCmd, host string,
+	connectSubCmd *string) error {
+	return c.NodeAsync(command, host, connectSubCmd).Receive()
 }
 
 // FutureGetAddedNodeInfoResult is a future promise to deliver the result of a
@@ -208,6 +242,43 @@ func (c *Client) PingAsync() FuturePingResult {
 // access the ping times.
 func (c *Client) Ping() error {
 	return c.PingAsync().Receive()
+}
+
+// FutureGetNetworkInfoResult is a future promise to deliver the result of a
+// GetNetworkInfoAsync RPC invocation (or an applicable error).
+type FutureGetNetworkInfoResult chan *response
+
+// Receive waits for the response promised by the future and returns data about
+// the current network.
+func (r FutureGetNetworkInfoResult) Receive() (*btcjson.GetNetworkInfoResult, error) {
+	res, err := receiveFuture(r)
+	if err != nil {
+		return nil, err
+	}
+
+	// Unmarshal result as an array of getpeerinfo result objects.
+	var networkInfo btcjson.GetNetworkInfoResult
+	err = json.Unmarshal(res, &networkInfo)
+	if err != nil {
+		return nil, err
+	}
+
+	return &networkInfo, nil
+}
+
+// GetNetworkInfoAsync returns an instance of a type that can be used to get the
+// result of the RPC at some future time by invoking the Receive function on the
+// returned instance.
+//
+// See GetNetworkInfo for the blocking version and more details.
+func (c *Client) GetNetworkInfoAsync() FutureGetNetworkInfoResult {
+	cmd := btcjson.NewGetNetworkInfoCmd()
+	return c.sendCmd(cmd)
+}
+
+// GetNetworkInfo returns data about the current network.
+func (c *Client) GetNetworkInfo() (*btcjson.GetNetworkInfoResult, error) {
+	return c.GetNetworkInfoAsync().Receive()
 }
 
 // FutureGetPeerInfoResult is a future promise to deliver the result of a

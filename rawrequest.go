@@ -1,14 +1,14 @@
-// Copyright (c) 2014-2015 The btcsuite developers
+// Copyright (c) 2014-2017 The btcsuite developers
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
 
-package btcrpcclient
+package rpcclient
 
 import (
 	"encoding/json"
 	"errors"
 
-	"github.com/roasbeef/btcd/btcjson"
+	"github.com/btcsuite/btcd/btcjson"
 )
 
 // FutureRawResult is a future promise to deliver the result of a RawRequest RPC

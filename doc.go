@@ -1,15 +1,15 @@
-// Copyright (c) 2014 The btcsuite developers
+// Copyright (c) 2014-2017 The btcsuite developers
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
 
 /*
-Package btcrpcclient implements a websocket-enabled Bitcoin JSON-RPC client.
+Package rpcclient implements a websocket-enabled Bitcoin JSON-RPC client.
 
 Overview
 
 This client provides a robust and easy to use client for interfacing with a
 Bitcoin RPC server that uses a btcd/bitcoin core compatible Bitcoin JSON-RPC
-API.  This client has been tested with btcd (https://github.com/roasbeef/btcd),
+API.  This client has been tested with btcd (https://github.com/btcsuite/btcd),
 btcwallet (https://github.com/btcsuite/btcwallet), and
 bitcoin core (https://github.com/bitcoin).
 
@@ -175,4 +175,4 @@ The following full-blown client examples are in the examples directory:
    for notifications about changes to account balances, and gets a list of
    unspent transaction outputs (utxos) the wallet can sign
 */
-package btcrpcclient
+package rpcclient

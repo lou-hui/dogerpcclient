@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2015 The btcsuite developers
+// Copyright (c) 2014-2017 The btcsuite developers
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
 
@@ -10,22 +10,24 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/roasbeef/btcd/wire"
-	"github.com/roasbeef/btcrpcclient"
-	"github.com/roasbeef/btcutil"
+	"github.com/btcsuite/btcd/rpcclient"
+	"github.com/btcsuite/btcd/wire"
+	"github.com/btcsuite/btcutil"
 )
 
 func main() {
 	// Only override the handlers for notifications you care about.
 	// Also note most of these handlers will only be called if you register
-	// for notifications.  See the documentation of the btcrpcclient
+	// for notifications.  See the documentation of the rpcclient
 	// NotificationHandlers type for more details about each handler.
-	ntfnHandlers := btcrpcclient.NotificationHandlers{
-		OnBlockConnected: func(hash *wire.ShaHash, height int32, time time.Time) {
-			log.Printf("Block connected: %v (%d) %v", hash, height, time)
+	ntfnHandlers := rpcclient.NotificationHandlers{
+		OnFilteredBlockConnected: func(height int32, header *wire.BlockHeader, txns []*btcutil.Tx) {
+			log.Printf("Block connected: %v (%d) %v",
+				header.BlockHash(), height, header.Timestamp)
 		},
-		OnBlockDisconnected: func(hash *wire.ShaHash, height int32, time time.Time) {
-			log.Printf("Block disconnected: %v (%d) %v", hash, height, time)
+		OnFilteredBlockDisconnected: func(height int32, header *wire.BlockHeader) {
+			log.Printf("Block disconnected: %v (%d) %v",
+				header.BlockHash(), height, header.Timestamp)
 		},
 	}
 
@@ -35,14 +37,14 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	connCfg := &btcrpcclient.ConnConfig{
+	connCfg := &rpcclient.ConnConfig{
 		Host:         "localhost:8334",
 		Endpoint:     "ws",
 		User:         "yourrpcuser",
 		Pass:         "yourrpcpass",
 		Certificates: certs,
 	}
-	client, err := btcrpcclient.New(connCfg, &ntfnHandlers)
+	client, err := rpcclient.New(connCfg, &ntfnHandlers)
 	if err != nil {
 		log.Fatal(err)
 	}
