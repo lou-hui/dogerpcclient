@@ -8,5 +8,6 @@ require (
 	github.com/btcsuite/btcutil v0.0.0-20190425235716-9e5f4b9a998d
 	github.com/btcsuite/go-socks v0.0.0-20170105172521-4720035b7bfd
 	github.com/btcsuite/websocket v0.0.0-20150119174127-31079b680792
+	github.com/shopspring/decimal v0.0.0-20191125035519-b054a8dfd10d
 	golang.org/x/crypto v0.0.0-20191117063200-497ca9f6d64f // indirect
 )

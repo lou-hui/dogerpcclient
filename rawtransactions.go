@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
+	"github.com/shopspring/decimal"
 
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
@@ -691,4 +692,36 @@ func (c *Client) DecodeScriptAsync(serializedScript []byte) FutureDecodeScriptRe
 // DecodeScript returns information about a script given its serialized bytes.
 func (c *Client) DecodeScript(serializedScript []byte) (*btcjson.DecodeScriptResult, error) {
 	return c.DecodeScriptAsync(serializedScript).Receive()
+}
+
+func (c *Client) GetRawTransactionFee(txHash *chainhash.Hash) (ret float64, err error) {
+	txRaw, err := c.GetRawTransactionVerbose(txHash)
+	if err != nil {
+		return
+	}
+	vinAmount := decimal.New(0, 8)
+	for _, vin := range txRaw.Vin {
+		if vin.IsCoinBase() {
+			return 0, nil
+		}else{
+			hash, err := chainhash.NewHashFromStr(vin.Txid)
+			if err != nil {
+				return 0, err
+			}
+			raw, err := c.GetRawTransactionVerbose(hash)
+			if err != nil {
+				return 0, err
+			}
+			value := raw.Vout[vin.Vout].Value
+			vinAmount = vinAmount.Add(decimal.NewFromFloat(value))
+		}
+	}
+
+	voutAmount := decimal.New(0, 8)
+	for _, vout := range txRaw.Vout {
+		voutAmount = voutAmount.Add(decimal.NewFromFloat(vout.Value))
+	}
+
+	ret, _ = vinAmount.Sub(voutAmount).Float64()
+	return
 }
