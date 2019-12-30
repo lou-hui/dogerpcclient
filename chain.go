@@ -144,7 +144,7 @@ func (c *Client) GetBlock(blockHash *chainhash.Hash) (*wire.MsgBlock, error) {
 // See GetBlockVerbose to retrieve a data structure with information about the
 // block instead.
 func (c *Client) GetBlockNoWitness(blockHash *chainhash.Hash) (*wire.MsgBlock, error) {
-	return c.GetBlockAsync(blockHash).Receive()
+	return c.GetBlockAsync(blockHash).ReceiveNoWitness()
 }
 
 // FutureGetBlockVerboseResult is a future promise to deliver the result of a
