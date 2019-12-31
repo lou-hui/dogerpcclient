@@ -86,34 +86,21 @@ func (r FutureGetBlockResult) Receive() (*wire.MsgBlock, error) {
 	return &msgBlock, nil
 }
 
-// ReceiveNoWitness waits for the response promised by the future and returns the raw
+// ReceiveHexString waits for the response promised by the future and returns the raw
 // block requested from the server given its hash.
-func (r FutureGetBlockResult) ReceiveNoWitness() (*wire.MsgBlock, error) {
+func (r FutureGetBlockResult) ReceiveHexString() (string, error) {
 	res, err := receiveFuture(r)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	// Unmarshal result as a string.
 	var blockHex string
 	err = json.Unmarshal(res, &blockHex)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-
-	// Decode the serialized block hex to raw bytes.
-	serializedBlock, err := hex.DecodeString(blockHex)
-	if err != nil {
-		return nil, err
-	}
-
-	// Deserialize the block and return it.
-	var msgBlock wire.MsgBlock
-	err = msgBlock.DeserializeNoWitness(bytes.NewReader(serializedBlock))
-	if err != nil {
-		return nil, err
-	}
-	return &msgBlock, nil
+	return blockHex, nil
 }
 
 // GetBlockAsync returns an instance of a type that can be used to get the
@@ -139,12 +126,9 @@ func (c *Client) GetBlock(blockHash *chainhash.Hash) (*wire.MsgBlock, error) {
 	return c.GetBlockAsync(blockHash).Receive()
 }
 
-// GetBlockNoWitness returns a raw block from the server given its hash.
-//
-// See GetBlockVerbose to retrieve a data structure with information about the
-// block instead.
-func (c *Client) GetBlockNoWitness(blockHash *chainhash.Hash) (*wire.MsgBlock, error) {
-	return c.GetBlockAsync(blockHash).ReceiveNoWitness()
+// GetBlockHexString returns a raw block from the server given its hash.
+func (c *Client) GetBlockHexString(blockHash *chainhash.Hash) (string, error) {
+	return c.GetBlockAsync(blockHash).ReceiveHexString()
 }
 
 // FutureGetBlockVerboseResult is a future promise to deliver the result of a
